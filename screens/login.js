@@ -107,7 +107,7 @@ export function AuthShell({ children }) {
   return html`
     <div class="auth">
       <section class="auth-brand">
-        <p class="wordmark"><span class="brand-mark" aria-hidden="true"></span>공용작업클라우드</p>
+        <p class="wordmark"><span class="brand-mark" aria-hidden="true">공</span>공용작업클라우드</p>
         <p class="auth-copy">팀의 할 일, 문서, 대화, 근무 기록을 한곳에서 관리합니다.</p>
       </section>
       ${children}

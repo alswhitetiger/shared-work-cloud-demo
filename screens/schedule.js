@@ -175,8 +175,58 @@ function DayCell({ day, month, items, laneOf, selected, onPick }) {
     </button>`;
 }
 
+// 제작 트랙: 영상 편집 프로그램처럼 제작 건마다 줄을 두고 일정을 기간 막대로 놓는다. 오늘 위치에 빨간 재생선.
+// 같은 줄에서 겹치는 일정은 아래 줄로 내린다(앞에서부터 빈 줄을 찾는다).
+// 하루짜리는 이름이 옆 칸까지 보이게 두므로 이틀 자리를 비워 둔다
+const reach = (it) => (isPeriod(it) ? lastDay(it) : addDays(kstDay(it.at), 1));
+function packRows(list) {
+  const rows = [];
+  for (const it of [...list].sort((a, b) => (a.at < b.at ? -1 : 1))) {
+    const row = rows.find((r) => reach(r.at(-1)) < kstDay(it.at));
+    if (row) row.push(it); else rows.push([it]);
+  }
+  return rows.length ? rows : [[]];
+}
+
+function Tracks({ days, items, sel, onPick }) {
+  const today = todayKST();
+  const n = days.length;
+  const col = (d) => days.indexOf(d) + 1;
+  const place = (it) => `${col(kstDay(it.at)) || 1} / ${(col(lastDay(it)) || n) + 1}`;
+  const names = [...new Set(items.map((it) => it.project))].sort((a, b) => (!a) - (!b) || a.localeCompare(b));
+  const ti = col(today);
+  return html`
+    <div class="trk-wrap">
+      <div class="trk" style=${`--n:${n}`}>
+        <span class="trk-corner"></span>
+        ${days.map((d, i) => html`<button type="button" class=${'trk-day' + (weekday(d) === 0 ? ' sun' : '') + (d === today ? ' today' : '') + (d === sel ? ' sel' : '')}
+          aria-pressed=${d === sel} aria-label=${longDay(d)} onClick=${() => onPick(d)}><span>${d === today ? '오늘' : WEEK[weekday(d)]}</span><b>${i === 0 || d.endsWith('-01') ? md(d) : +d.slice(8)}</b></button>`)}
+        ${names.map((p) => {
+          const mine = items.filter((it) => it.project === p);
+          const marks = days.map((d) => [d, mine.filter((it) => it.kind !== 'schedule' && kstDay(it.at) === d).length]).filter(([, c]) => c);
+          return html`
+            <span class=${'trk-name ' + colorOf(p)}><i></i>${p || '제작 건 없음'}</span>
+            ${packRows(mine.filter((it) => it.kind === 'schedule')).map((row, i) => html`
+              ${i > 0 && html`<span class="trk-name sub"></span>`}
+              <div class="trk-lane">${row.map((it) => html`<button type="button" class=${'trk-clip ' + colorOf(p) + (isPeriod(it) ? '' : ' one') + (it.done ? ' done' : '')} style=${`grid-column:${place(it)}`}
+                title=${it.title} onClick=${() => onPick(col(kstDay(it.at)) ? kstDay(it.at) : days[0])}>${it.title}</button>`)}</div>`)}
+            ${marks.length > 0 && html`
+              <span class="trk-name sub">메일·기록</span>
+              <div class="trk-lane">${marks.map(([d, c]) => html`<button type="button" class="trk-mk" style=${`grid-column:${col(d)}`} aria-label=${`${longDay(d)} 메일·기록 ${c}개`} onClick=${() => onPick(d)}>${c}</button>`)}</div>`}`;
+        })}
+        ${names.length === 0 && html`<p class="trk-empty">이 기간에는 일정이 없습니다</p>`}
+        ${ti > 0 && html`<span class="trk-play" style=${`--x:${(ti - 0.5) / n}`} aria-hidden="true"></span>`}
+      </div>
+    </div>`;
+}
+
+const monday = (d) => addDays(d, -((weekday(d) + 6) % 7));
+
 export function Screen() {
   const today = todayKST();
+  const [view, setView] = useState(() => { try { return localStorage.getItem('schedule-view') || 'tracks'; } catch { return 'tracks'; } });
+  const [span, setSpan] = useState(14);
+  const [from, setFrom] = useState(() => monday(today));
   const [month, setMonth] = useState(today.slice(0, 7));
   const [sel, setSel] = useState(today);
   const [project, setProject] = useState('');
@@ -186,7 +236,7 @@ export function Screen() {
   const [people, setPeople] = useState([]);
   const [form, setForm] = useState(null); // null | { editing } | { day }
   const [error, setError] = useState('');
-  const days = monthDays(month);
+  const days = view === 'month' ? monthDays(month) : Array.from({ length: span }, (_, i) => addDays(from, i));
 
   const load = useCallback(() => {
     const only = project ? pb.filter(' && project = {:p}', { p: project }) : '';
@@ -201,7 +251,7 @@ export function Screen() {
       setDayItems(inDay);
       setProjects([...new Set(ps.map((r) => r.project))].sort());
     }).catch((e) => setError(errorMessage(e)));
-  }, [month, sel, project]);
+  }, [view, span, from, month, sel, project]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { users().then(setPeople).catch(() => {}); }, []);
@@ -215,12 +265,22 @@ export function Screen() {
     setSel(day);
     setForm(null);
     if (day.slice(0, 7) !== month) setMonth(day.slice(0, 7));
+    if (view === 'tracks' && (day < from || day > addDays(from, span - 1))) setFrom(monday(day));
   };
   const goMonth = (n) => {
+    if (view === 'tracks') {
+      const next = addDays(from, n * 7);
+      setFrom(next);
+      return pick(next <= today && today <= addDays(next, span - 1) ? today : next);
+    }
     const next = shiftMonth(month, n);
     setMonth(next);
     setSel(next === today.slice(0, 7) ? today : next + '-01');
     setForm(null);
+  };
+  const switchView = (v) => {
+    setView(v);
+    try { localStorage.setItem('schedule-view', v); } catch { /* 저장 못 해도 이번에는 바뀐다 */ }
   };
   const laneOf = lanes(monthItems);
   const itemsOn = (day) => monthItems.filter((it) => kstDay(it.at) <= day && lastDay(it) >= day);
@@ -243,16 +303,23 @@ export function Screen() {
     <div class="cal-layout">
       <section class="panel cal-panel">
         <div class="cal-bar">
-          <button class="btn ghost icon" type="button" aria-label="지난달" onClick=${() => goMonth(-1)}><${Icon} name="back" /></button>
-          <h2 class="cal-title" aria-live="polite">${y}년 ${+m}월</h2>
-          <button class="btn ghost icon flip" type="button" aria-label="다음 달" onClick=${() => goMonth(1)}><${Icon} name="back" /></button>
+          <div class="seg" role="group" aria-label="보기">
+            ${[['tracks', '타임라인'], ['month', '달력']].map(([v, l]) => html`<button type="button" aria-pressed=${view === v} onClick=${() => switchView(v)}>${l}</button>`)}
+          </div>
+          <button class="btn ghost icon" type="button" aria-label=${view === 'month' ? '지난달' : '지난주'} onClick=${() => goMonth(-1)}><${Icon} name="back" /></button>
+          <h2 class="cal-title" aria-live="polite">${view === 'month' ? `${y}년 ${+m}월` : `${md(days[0])} – ${md(days.at(-1))}`}</h2>
+          <button class="btn ghost icon flip" type="button" aria-label=${view === 'month' ? '다음 달' : '다음 주'} onClick=${() => goMonth(1)}><${Icon} name="back" /></button>
           <span class="spacer"></span>
-          ${(month !== today.slice(0, 7) || sel !== today) && html`<button class="btn" type="button" onClick=${() => pick(today)}>오늘</button>`}
+          ${view === 'tracks' && html`<div class="seg" role="group" aria-label="보이는 기간">
+            ${[[7, '1주'], [14, '2주'], [21, '3주']].map(([n, l]) => html`<button type="button" aria-pressed=${span === n} onClick=${() => setSpan(n)}>${l}</button>`)}
+          </div>`}
+          ${(month !== today.slice(0, 7) || sel !== today || from !== monday(today)) && html`<button class="btn" type="button" onClick=${() => { setFrom(monday(today)); pick(today); }}>오늘</button>`}
         </div>
-        <div class="cal">
-          ${WEEK.map((w) => html`<span class="cal-head" aria-hidden="true">${w}</span>`)}
-          ${days.map((d) => html`<${DayCell} key=${d} day=${d} month=${month} items=${itemsOn(d)} laneOf=${laneOf} selected=${d === sel} onPick=${pick} />`)}
-        </div>
+        ${view === 'month' ? html`
+          <div class="cal">
+            ${WEEK.map((w) => html`<span class="cal-head" aria-hidden="true">${w}</span>`)}
+            ${days.map((d) => html`<${DayCell} key=${d} day=${d} month=${month} items=${itemsOn(d)} laneOf=${laneOf} selected=${d === sel} onPick=${pick} />`)}
+          </div>` : html`<${Tracks} days=${days} items=${monthItems} sel=${sel} onPick=${pick} />`}
         ${shown.size > 0 && html`<p class="cal-legend">${[...shown].sort().map((p) => html`<span class=${'project-chip ' + colorOf(p)}>${p}</span>`)}</p>`}
       </section>
 

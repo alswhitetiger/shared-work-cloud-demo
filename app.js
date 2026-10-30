@@ -73,7 +73,7 @@ function LoadFailed() {
 
 function NavLinks({ items, current, dot }) {
   return items.map((n) => html`
-    <a href=${'#/' + n.key} aria-current=${current === n.key || n.also?.includes(current) ? 'page' : undefined}>
+    <a href=${'#/' + n.key} title=${n.label} aria-current=${current === n.key || n.also?.includes(current) ? 'page' : undefined}>
       <${Icon} name=${n.icon} /><span>${n.label}</span>
       ${n.key === 'chat' && dot ? html`<span class="dot" role="img" aria-label="새 메시지"></span>` : null}
     </a>`);
@@ -192,10 +192,10 @@ function App() {
     <div class="app">
       <button class="skip" type="button" onClick=${() => mainRef.current?.focus()}>본문으로 건너뛰기</button>
       <aside class="rail" aria-label="주 메뉴">
-        <div class="brand"><span class="brand-mark" aria-hidden="true"></span>공용작업클라우드</div>
+        <div class="brand" title="공용작업클라우드"><span class="brand-mark" aria-hidden="true">공</span><span class="sr-only">공용작업클라우드</span></div>
         <nav class="nav"><${NavLinks} items=${RAIL} current=${name} dot=${dot} /></nav>
         <div class="bottom nav">
-          <a href="#/settings" aria-current=${name === 'settings' ? 'page' : undefined}>
+          <a href="#/settings" title=${'설정 · ' + (user?.name || '')} aria-current=${name === 'settings' ? 'page' : undefined}>
             <${Icon} name="settings" /><span>${user?.name || '설정'}</span>
           </a>
         </div>
