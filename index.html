@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#0e1a2b" />
+  <meta name="color-scheme" content="light" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="공용작업" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <title>공용작업클라우드</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    .demo-bar { position: fixed; right: 12px; bottom: calc(var(--tabbar-h, 60px) + 12px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 24px); padding: 6px 6px 6px 12px; border-radius: 999px; background: rgba(14, 26, 43, 0.92); color: #fff; font-size: 12px; line-height: 1.3; }
+    .demo-bar button { flex: none; height: 28px; padding: 0 10px; border: 0; border-radius: 999px; background: #fff; color: #0e1a2b; font: inherit; font-weight: 700; cursor: pointer; }
+    @media (min-width: 900px) { .demo-bar { bottom: 16px; } }
+  </style>
+  <script type="module" src="./demo.js"></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <noscript>이 프로그램은 자바스크립트를 켜야 쓸 수 있습니다.</noscript>
+</body>
+</html>
