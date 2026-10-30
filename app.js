@@ -3,6 +3,7 @@ import { pb, me, onConnection, signOut, resavePush } from './pb.js';
 import { Icon } from './icons.js';
 import { OFFLINE } from './lib/errors.js';
 import { setDraftOwner } from './lib/drafts.js';
+import { currentTheme, setTheme, onTheme } from './lib/theme.js';
 import { sameOriginURL } from './lib/push.js';
 
 setDraftOwner(me()?.id);
@@ -69,6 +70,16 @@ function parse() {
 
 function LoadFailed() {
   return html`<div class="empty">화면을 불러오지 못했습니다. 연결을 확인하고 새로고침해 주세요.</div>`;
+}
+
+// 밝게 ↔ 어둡게 바로 바꾸기(자세한 선택은 설정 → 화면 밝기)
+function ThemeButton({ className = 'theme-btn' }) {
+  const [theme, setThemeState] = useState(currentTheme);
+  useEffect(() => onTheme(setThemeState), []);
+  const next = theme === 'dark' ? 'light' : 'dark';
+  const label = next === 'light' ? '밝게 보기' : '어둡게 보기';
+  return html`<button class=${className} type="button" title=${label} aria-label=${label} onClick=${() => setTheme(next)}>
+    <${Icon} name=${next === 'light' ? 'sun' : 'moon'} /></button>`;
 }
 
 function NavLinks({ items, current, dot }) {
@@ -195,6 +206,7 @@ function App() {
         <div class="brand" title="공용작업클라우드"><span class="brand-mark" aria-hidden="true">공</span><span class="sr-only">공용작업클라우드</span></div>
         <nav class="nav"><${NavLinks} items=${RAIL} current=${name} dot=${dot} /></nav>
         <div class="bottom nav">
+          <${ThemeButton} />
           <a href="#/settings" title=${'설정 · ' + (user?.name || '')} aria-current=${name === 'settings' ? 'page' : undefined}>
             <${Icon} name="settings" /><span>${user?.name || '설정'}</span>
           </a>
@@ -205,6 +217,8 @@ function App() {
         ${backupWarn && html`<a class="banner warn" href="/setup">${backupWarn} · 눌러서 확인하기</a>`}
         <header class="topbar">
           <span class="title">${TITLES[name] || ''}</span>
+          <span class="spacer"></span>
+          <${ThemeButton} className="btn ghost icon" />
           <a class="btn ghost icon" href="#/settings" aria-label="설정"><${Icon} name="settings" /></a>
         </header>
         <main class="content" id="main" tabindex="-1" ref=${mainRef}>

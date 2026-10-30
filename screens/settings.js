@@ -2,6 +2,7 @@ import { html, useState, useEffect } from '../vendor/preact-htm.js';
 import { pb, me, forgetUsers, dropPush, pushIsMine, savePush, signOut } from '../pb.js';
 import { toast } from '../app.js';
 import { errorMessage } from '../lib/errors.js';
+import { themeChoice, setTheme, onTheme } from '../lib/theme.js';
 
 const SETTINGS_ID = 'teamsettings001';
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -196,6 +197,21 @@ function Profile() {
     </section>`;
 }
 
+function Theme() {
+  const [choice, setChoice] = useState(themeChoice);
+  useEffect(() => onTheme(() => setChoice(themeChoice())), []); // 메뉴의 밝기 단추로 바꿔도 맞춘다
+  const pickTheme = (c) => { setTheme(c); setChoice(c); };
+  return html`
+    <section class="panel panel-pad">
+      <h2 class="section-title">화면 밝기</h2>
+      <p class="section-desc">이 기기에서만 바뀝니다. "기기 설정"을 고르면 휴대폰·PC의 밝게/어둡게 설정을 따라갑니다.</p>
+      <div class="seg" role="group" aria-label="화면 밝기">
+        ${[['dark', '어둡게'], ['light', '밝게'], ['system', '기기 설정']].map(([c, l]) => html`
+          <button type="button" aria-pressed=${choice === c} onClick=${() => pickTheme(c)}>${l}</button>`)}
+      </div>
+    </section>`;
+}
+
 export function Screen() {
   async function logout() {
     await signOut();
@@ -204,6 +220,7 @@ export function Screen() {
   return html`
     <div class="page-head"><h1>설정</h1></div>
     <div class="settings">
+      <${Theme} />
       <${Push} />
       <${ClockRemind} />
       <${Invite} />
